@@ -2,22 +2,11 @@
 
 *, *::before, *::after { box-sizing: border-box; }
 
-html, body { height: 100%; margin: 0; background: #f1f5f9; }
-#root { height: 100%; }
-
-.app-shell { display: flex; flex-direction: column; }
-
-@media (min-width: 768px) {
-  .app-shell { height: 100dvh; overflow: hidden; }
-  .main-grid { display: grid; grid-template-columns: 370px 1fr; align-items: start; }
+body {
+  margin: 0;
+  background: #0a0a0b;
 }
 
-@media (max-width: 767px) {
-  .main-grid { display: flex; flex-direction: column; overflow-y: auto; }
+#root {
+  min-height: 100vh;
 }
-
-.col-left  { display: flex; flex-direction: column; gap: 0.75rem; height: 100%; overflow: hidden; }
-.col-right { display: flex; flex-direction: column; gap: 0.75rem; height: 100%; }
-
-.main-grid { flex: 1; gap: 0.875rem; padding: 0.875rem 1.25rem; min-height: 0; overflow: hidden; }
-.flex-fill { flex: 1; min-height: 0; overflow-y: auto; }

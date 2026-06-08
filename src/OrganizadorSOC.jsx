@@ -1,13 +1,13 @@
 import { useState, useEffect, useCallback } from "react";
 
 const FRENTES = {
-  sc200:     { label: "SC-200",   color: "#3b82f6", bg: "#eff6ff" },
-  wazuh:     { label: "Wazuh",   color: "#7c3aed", bg: "#f5f3ff" },
-  azure:     { label: "Azure",   color: "#0891b2", bg: "#ecfeff" },
-  cisco:     { label: "Cisco",   color: "#059669", bg: "#ecfdf5" },
-  ingles:    { label: "Inglés",  color: "#d97706", bg: "#fffbeb" },
-  busqueda:  { label: "Búsqueda",color: "#ea580c", bg: "#fff7ed" },
-  freelance: { label: "Freelance",color:"#db2777", bg: "#fdf2f8" },
+  sc200:     { label: "SC-200",     color: "#3b82f6", bg: "#eff6ff" },
+  wazuh:     { label: "Wazuh",      color: "#7c3aed", bg: "#f5f3ff" },
+  azure:     { label: "Azure",      color: "#0891b2", bg: "#ecfeff" },
+  cisco:     { label: "Cisco",      color: "#059669", bg: "#ecfdf5" },
+  ingles:    { label: "Inglés",     color: "#d97706", bg: "#fffbeb" },
+  busqueda:  { label: "Búsqueda",   color: "#ea580c", bg: "#fff7ed" },
+  freelance: { label: "Freelance",  color: "#db2777", bg: "#fdf2f8" },
 };
 const FRENTE_KEYS = Object.keys(FRENTES);
 
@@ -17,6 +17,7 @@ const WEEKDAY = [
   { frente: "cisco",  text: "Cisco: módulo del día (1.5h)" },
   { frente: "ingles", text: "Inglés: práctica diaria (45m)" },
 ];
+
 const PLAN_SUGERIDO = {
   1: WEEKDAY, 2: WEEKDAY, 3: WEEKDAY, 4: WEEKDAY, 5: WEEKDAY,
   6: [
@@ -30,254 +31,351 @@ const PLAN_SUGERIDO = {
 };
 
 const HORARIO = [
-  { time: "08:30",       label: "Despertar, desayuno",                           type: "rest" },
-  { time: "09:00–11:00", label: "Bloque 1 · SC-200 (2h)",                        sub: "Cabeza fresca, lo más exigente del día",     type: "block", bg: "#E6F1FB", border: "#185FA5", text: "#0C447C", sub_c: "#185FA5" },
-  { time: "16:00–17:30", label: "Bloque 2 · frente del día (1.5h)",              sub: "Cisco / Wazuh / búsqueda, según el día",     type: "block", bg: "#E1F5EE", border: "#0F6E56", text: "#085041", sub_c: "#0F6E56" },
-  { time: "17:30–21:30", label: "Cena / descanso / vida",                         type: "rest" },
-  { time: "21:30–22:15", label: "Bloque 3 · inglés técnico (45 min)",            sub: "Lo más liviano: hablar, escuchar, repasar",  type: "block", bg: "#FAEEDA", border: "#BA7517", text: "#854F0B", sub_c: "#BA7517" },
-  { time: "22:15–23:00", label: "Bajar revoluciones, lejos de pantalla pesada",   type: "rest" },
-  { time: "23:00",       label: "A dormir",                                        type: "rest" },
+  { time: "08:30",        label: "Despertar, desayuno",                        type: "rest" },
+  { time: "09:00–11:00",  label: "Bloque 1 · SC-200 (2h)",                     sub: "Cabeza fresca, lo más exigente del día",       type: "block", bg: "#E6F1FB", border: "#185FA5", text: "#0C447C", sub_color: "#185FA5" },
+  { time: "16:00–17:30",  label: "Bloque 2 · frente del día (1.5h)",           sub: "Cisco / Wazuh / búsqueda, según el día",       type: "block", bg: "#E1F5EE", border: "#0F6E56", text: "#085041", sub_color: "#0F6E56" },
+  { time: "17:30–21:30",  label: "Cena / descanso / vida",                     type: "rest" },
+  { time: "21:30–22:15",  label: "Bloque 3 · inglés técnico (45 min)",         sub: "Lo más liviano: hablar, escuchar, repasar",    type: "block", bg: "#FAEEDA", border: "#BA7517", text: "#854F0B", sub_color: "#BA7517" },
+  { time: "22:15–23:00",  label: "Bajar revoluciones, lejos de pantalla pesada", type: "rest" },
+  { time: "23:00",        label: "A dormir",                                   type: "rest" },
 ];
 
 const ymd = (d) =>
-  `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,"0")}-${String(d.getDate()).padStart(2,"0")}`;
-const uid = () => Math.random().toString(36).slice(2,9);
+  `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+const uid = () => Math.random().toString(36).slice(2, 9);
 const lsGet = (k) => { try { return localStorage.getItem(k); } catch { return null; } };
-const lsSet = (k,v) => { try { localStorage.setItem(k,v); } catch { /**/ } };
+const lsSet = (k, v) => { try { localStorage.setItem(k, v); } catch { /**/ } };
 const buildPlan = (d) =>
-  (PLAN_SUGERIDO[d.getDay()]||[]).map(s=>({id:uid(),text:s.text,frente:s.frente,done:false}));
-
-// ── Estilos de tarjeta base ────────────────────────────────────────────────
-const card = { background:"#fff", border:"1px solid #e2e8f0", borderRadius:16,
-               boxShadow:"0 1px 3px rgba(15,23,42,.05)" };
+  (PLAN_SUGERIDO[d.getDay()] || []).map((s) => ({ id: uid(), text: s.text, frente: s.frente, done: false }));
 
 export default function OrganizadorSOC() {
-  const [date,setDate]           = useState(new Date());
-  const [tasks,setTasks]         = useState([]);
-  const [loading,setLoading]     = useState(true);
-  const [newText,setNewText]     = useState("");
-  const [newFrente,setNewFrente] = useState("sc200");
+  const [date, setDate]           = useState(new Date());
+  const [tasks, setTasks]         = useState([]);
+  const [loading, setLoading]     = useState(true);
+  const [newText, setNewText]     = useState("");
+  const [newFrente, setNewFrente] = useState("sc200");
 
   const key = `soc:dia:${ymd(date)}`;
 
-  useEffect(()=>{
+  useEffect(() => {
     setLoading(true);
     const raw = lsGet(key);
     let saved = null;
     try { saved = raw ? JSON.parse(raw) : null; } catch { /**/ }
-    if (saved && saved.length>0) { setTasks(saved); }
-    else { const p=buildPlan(date); setTasks(p); lsSet(key,JSON.stringify(p)); }
+    if (saved && saved.length > 0) {
+      setTasks(saved);
+    } else {
+      const plan = buildPlan(date);
+      setTasks(plan);
+      lsSet(key, JSON.stringify(plan));
+    }
     setLoading(false);
-  },[key]);
+  }, [key]);
 
-  const persist = useCallback((next)=>{ setTasks(next); lsSet(key,JSON.stringify(next)); },[key]);
-  const resetDia  = ()=>persist(buildPlan(date));
-  const addTask   = ()=>{ const t=newText.trim(); if(!t)return; persist([...tasks,{id:uid(),text:t,frente:newFrente,done:false}]); setNewText(""); };
-  const toggle    = (id)=>persist(tasks.map(x=>x.id===id?{...x,done:!x.done}:x));
-  const remove    = (id)=>persist(tasks.filter(x=>x.id!==id));
-  const cambiarDia = (d)=>{ const n=new Date(date); n.setDate(n.getDate()+d); setDate(n); };
+  const persist = useCallback((next) => { setTasks(next); lsSet(key, JSON.stringify(next)); }, [key]);
+  const resetDia = () => persist(buildPlan(date));
+  const addTask = () => {
+    const t = newText.trim();
+    if (!t) return;
+    persist([...tasks, { id: uid(), text: t, frente: newFrente, done: false }]);
+    setNewText("");
+  };
+  const toggle = (id) => persist(tasks.map((x) => (x.id === id ? { ...x, done: !x.done } : x)));
+  const remove = (id) => persist(tasks.filter((x) => x.id !== id));
+  const cambiarDia = (delta) => { const d = new Date(date); d.setDate(d.getDate() + delta); setDate(d); };
 
-  const hechas = tasks.filter(t=>t.done).length;
+  const hechas = tasks.filter((t) => t.done).length;
   const total  = tasks.length;
-  const pct    = total ? Math.round((hechas/total)*100) : 0;
-  const esHoy  = ymd(date)===ymd(new Date());
-  const esSemanaDia = [1,2,3,4,5].includes(date.getDay());
+  const pct    = total ? Math.round((hechas / total) * 100) : 0;
+  const esHoy  = ymd(date) === ymd(new Date());
 
-  const fechaLabel = date.toLocaleDateString("es-AR",{weekday:"long",day:"numeric",month:"long"});
+  const fechaLabel = date.toLocaleDateString("es-AR", { weekday: "long", day: "numeric", month: "long" });
 
-  const r=26, circ=2*Math.PI*r, dash=circ-(pct/100)*circ;
+  // Progreso circular (SVG)
+  const r = 28, circ = 2 * Math.PI * r;
+  const dash = circ - (pct / 100) * circ;
 
   return (
-    <div className="app-shell" style={{fontFamily:"Inter,ui-sans-serif,system-ui,sans-serif",background:"#f1f5f9",color:"#1e293b"}}>
+    <div style={{ background: "#f1f5f9", minHeight: "100vh", fontFamily: "Inter, ui-sans-serif, system-ui, sans-serif" }}>
 
-      {/* ── HEADER ── */}
-      <header style={{background:"#fff",borderBottom:"1px solid #e2e8f0",boxShadow:"0 1px 3px rgba(15,23,42,.06)",flexShrink:0,height:52,display:"flex",alignItems:"center",justifyContent:"space-between",padding:"0 1.5rem"}}>
-        <div style={{display:"flex",alignItems:"center",gap:9}}>
-          <div style={{background:"linear-gradient(135deg,#3b82f6,#6366f1)",borderRadius:8,width:28,height:28,display:"flex",alignItems:"center",justifyContent:"center"}}>
-            <svg width="14" height="14" viewBox="0 0 16 16" fill="none">
-              <rect x="2" y="2" width="5" height="5" rx="1.5" fill="white"/>
-              <rect x="9" y="2" width="5" height="5" rx="1.5" fill="white" opacity=".7"/>
-              <rect x="2" y="9" width="5" height="5" rx="1.5" fill="white" opacity=".7"/>
-              <rect x="9" y="9" width="5" height="5" rx="1.5" fill="white" opacity=".35"/>
-            </svg>
+      {/* ── NAV ── */}
+      <header style={{ background: "#fff", borderBottom: "1px solid #e2e8f0", boxShadow: "0 1px 3px rgba(15,23,42,.06)" }}>
+        <div className="max-w-3xl mx-auto px-4 sm:px-8 py-4 flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <div style={{ background: "linear-gradient(135deg,#3b82f6,#6366f1)", borderRadius: 10 }}
+              className="w-8 h-8 flex items-center justify-center">
+              <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
+                <rect x="2" y="2" width="5" height="5" rx="1" fill="white" />
+                <rect x="9" y="2" width="5" height="5" rx="1" fill="white" opacity=".7" />
+                <rect x="2" y="9" width="5" height="5" rx="1" fill="white" opacity=".7" />
+                <rect x="9" y="9" width="5" height="5" rx="1" fill="white" opacity=".4" />
+              </svg>
+            </div>
+            <span style={{ color: "#0f172a", fontWeight: 700, fontSize: 17 }}>SOC Tracker</span>
           </div>
-          <span style={{fontWeight:700,fontSize:15,color:"#0f172a"}}>SOC Tracker</span>
+          <button
+            onClick={resetDia}
+            style={{ color: "#64748b", border: "1px solid #e2e8f0", background: "#fff", borderRadius: 8, fontSize: 13 }}
+            className="px-3 py-1.5 hover:bg-slate-50 transition-colors flex items-center gap-1.5"
+          >
+            <span>↺</span> Resetear día
+          </button>
         </div>
-        <button onClick={resetDia}
-          style={{color:"#64748b",border:"1px solid #e2e8f0",background:"#fff",borderRadius:8,fontSize:12,cursor:"pointer",display:"flex",alignItems:"center",gap:5,padding:"5px 12px"}}>
-          ↺ Resetear día
-        </button>
       </header>
 
-      {/* ── MAIN GRID ── */}
-      <div className="main-grid">
+      <div className="max-w-3xl mx-auto px-4 sm:px-8 py-8 space-y-5">
 
-        {/* ══ COLUMNA IZQUIERDA ══ */}
-        <div className="col-left">
+        {/* ── FECHA ── */}
+        <div style={{ background: "#fff", border: "1px solid #e2e8f0", borderRadius: 20, boxShadow: "0 1px 4px rgba(15,23,42,.06)" }}
+          className="px-6 py-5">
+          <div className="flex items-center justify-between">
+            <button
+              onClick={() => cambiarDia(-1)}
+              style={{ background: "#f8fafc", border: "1px solid #e2e8f0", color: "#64748b", borderRadius: 12 }}
+              className="w-10 h-10 flex items-center justify-center text-xl hover:bg-slate-100 transition-colors"
+              aria-label="Día anterior"
+            >‹</button>
 
-          {/* Fecha */}
-          <div style={{...card, padding:"12px 18px", flexShrink:0}}>
-            <p style={{color:"#94a3b8",fontSize:10,fontWeight:600,letterSpacing:"0.1em",textTransform:"uppercase",textAlign:"center",marginBottom:6}}>Plan del día</p>
-            <div style={{display:"flex",alignItems:"center",justifyContent:"space-between"}}>
-              <button onClick={()=>cambiarDia(-1)}
-                style={{background:"#f8fafc",border:"1px solid #e2e8f0",color:"#64748b",borderRadius:10,width:34,height:34,fontSize:18,cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center"}}>
-                ‹
-              </button>
-              <div style={{textAlign:"center"}}>
-                <h1 style={{fontSize:"clamp(1rem,2.5vw,1.25rem)",fontWeight:700,color:"#0f172a",margin:0,letterSpacing:"-0.02em",textTransform:"capitalize"}}>
-                  {fechaLabel}
-                </h1>
-                {esHoy && <span style={{background:"#dcfce7",color:"#16a34a",fontSize:10,fontWeight:600,borderRadius:20,padding:"2px 10px",marginTop:4,display:"inline-block"}}>Hoy</span>}
-              </div>
-              <button onClick={()=>cambiarDia(1)}
-                style={{background:"#f8fafc",border:"1px solid #e2e8f0",color:"#64748b",borderRadius:10,width:34,height:34,fontSize:18,cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center"}}>
-                ›
-              </button>
-            </div>
-          </div>
-
-          {/* Progreso */}
-          <div style={{background:"linear-gradient(135deg,#1e40af 0%,#4f46e5 55%,#7c3aed 100%)",borderRadius:16,boxShadow:"0 4px 18px rgba(79,70,229,.28)",padding:"14px 20px",display:"flex",alignItems:"center",gap:16,flexShrink:0}}>
-            <div style={{position:"relative",flexShrink:0}}>
-              <svg width="64" height="64" style={{transform:"rotate(-90deg)"}}>
-                <circle cx="32" cy="32" r={r} fill="none" stroke="rgba(255,255,255,.2)" strokeWidth="5"/>
-                <circle cx="32" cy="32" r={r} fill="none" stroke="white" strokeWidth="5"
-                  strokeDasharray={circ} strokeDashoffset={dash} strokeLinecap="round"
-                  style={{transition:"stroke-dashoffset .5s ease"}}/>
-              </svg>
-              <span style={{color:"#fff",fontWeight:700,fontSize:13,position:"absolute",inset:0,display:"flex",alignItems:"center",justifyContent:"center"}}>
-                {pct}%
-              </span>
-            </div>
-            <div>
-              <p style={{color:"rgba(255,255,255,.65)",fontSize:11,margin:"0 0 3px"}}>Progreso del día</p>
-              <p style={{color:"#fff",fontSize:19,fontWeight:800,margin:0,letterSpacing:"-0.02em"}}>
-                {total===0 ? "Sin objetivos" : `${hechas} / ${total} hechas`}
+            <div className="text-center">
+              <p style={{ color: "#94a3b8", fontSize: 11, fontWeight: 600, letterSpacing: "0.1em", textTransform: "uppercase" }}>
+                Plan del día
               </p>
-              {pct===100&&total>0&&<p style={{color:"#a5f3fc",fontSize:11,margin:"3px 0 0",fontWeight:600}}>Día cerrado 🎯</p>}
+              <h1 style={{ color: "#0f172a", fontSize: "clamp(1.3rem, 4vw, 1.75rem)", fontWeight: 700, letterSpacing: "-0.02em" }}
+                className="capitalize mt-0.5">
+                {fechaLabel}
+              </h1>
+              {esHoy && (
+                <span style={{ background: "#dcfce7", color: "#16a34a", fontSize: 11, fontWeight: 600, borderRadius: 20 }}
+                  className="inline-block px-3 py-0.5 mt-1">
+                  Hoy
+                </span>
+              )}
             </div>
+
+            <button
+              onClick={() => cambiarDia(1)}
+              style={{ background: "#f8fafc", border: "1px solid #e2e8f0", color: "#64748b", borderRadius: 12 }}
+              className="w-10 h-10 flex items-center justify-center text-xl hover:bg-slate-100 transition-colors"
+              aria-label="Día siguiente"
+            >›</button>
+          </div>
+        </div>
+
+        {/* ── PROGRESO ── */}
+        <div style={{ background: "linear-gradient(135deg,#1e40af 0%,#4f46e5 50%,#7c3aed 100%)", borderRadius: 20, boxShadow: "0 4px 20px rgba(79,70,229,.3)" }}
+          className="px-6 py-5 flex items-center gap-5">
+
+          {/* Anillo */}
+          <div className="shrink-0 relative">
+            <svg width="72" height="72" style={{ transform: "rotate(-90deg)" }}>
+              <circle cx="36" cy="36" r={r} fill="none" stroke="rgba(255,255,255,.2)" strokeWidth="6" />
+              <circle cx="36" cy="36" r={r} fill="none" stroke="white" strokeWidth="6"
+                strokeDasharray={circ} strokeDashoffset={dash}
+                strokeLinecap="round"
+                style={{ transition: "stroke-dashoffset .5s ease" }} />
+            </svg>
+            <span style={{ color: "#fff", fontWeight: 700, fontSize: 15, position: "absolute", inset: 0, display: "flex", alignItems: "center", justifyContent: "center" }}>
+              {pct}%
+            </span>
           </div>
 
-          {/* Horario — solo días de semana */}
-          {esSemanaDia ? (
-            <div style={{...card, display:"flex",flexDirection:"column"}} className="flex-fill">
-              <div style={{padding:"10px 18px",borderBottom:"1px solid #f1f5f9",flexShrink:0}}>
-                <span style={{fontWeight:700,fontSize:13,color:"#0f172a"}}>Horario del día</span>
-              </div>
-              <div style={{padding:"10px 18px",overflowY:"auto",flex:1}}>
-                <div style={{borderLeft:"2px solid #e2e8f0",display:"grid",gridTemplateColumns:"90px 1fr",gap:0}}>
-                  {HORARIO.map((item,i)=>(
-                    <>
-                      <div key={`t${i}`} style={{fontSize:11,fontWeight:item.type==="block"?600:400,color:item.type==="block"?"#374151":"#9ca3af",padding:"8px 10px",lineHeight:1.3}}>
-                        {item.time}
-                      </div>
-                      <div key={`c${i}`} style={{padding:"5px 4px 5px 0"}}>
-                        {item.type==="block" ? (
-                          <div style={{background:item.bg,border:`0.5px solid ${item.border}`,borderRadius:8,padding:"7px 10px"}}>
-                            <div style={{fontSize:12,fontWeight:600,color:item.text}}>{item.label}</div>
-                            <div style={{fontSize:11,color:item.sub_c,marginTop:1}}>{item.sub}</div>
-                          </div>
-                        ) : (
-                          <div style={{fontSize:12,color:"#9ca3af",padding:"3px 0",lineHeight:1.4}}>{item.label}</div>
-                        )}
-                      </div>
-                    </>
-                  ))}
-                </div>
-              </div>
+          <div>
+            <p style={{ color: "rgba(255,255,255,.7)", fontSize: 13, marginBottom: 2 }}>Progreso del día</p>
+            <p style={{ color: "#fff", fontSize: 22, fontWeight: 800, letterSpacing: "-0.02em" }}>
+              {total === 0 ? "Sin objetivos" : `${hechas} / ${total} completadas`}
+            </p>
+            {pct === 100 && total > 0 && (
+              <p style={{ color: "#a5f3fc", fontSize: 13, marginTop: 2, fontWeight: 600 }}>
+                Día cerrado. Bien ahí. 🎯
+              </p>
+            )}
+          </div>
+        </div>
+
+        {/* ── TAREAS ── */}
+        <div style={{ background: "#fff", border: "1px solid #e2e8f0", borderRadius: 20, boxShadow: "0 1px 4px rgba(15,23,42,.06)" }}
+          className="overflow-hidden">
+
+          {/* Header sección */}
+          <div style={{ borderBottom: "1px solid #f1f5f9" }} className="px-6 py-4 flex items-center justify-between">
+            <span style={{ color: "#0f172a", fontWeight: 700, fontSize: 16 }}>Objetivos</span>
+            <span style={{ background: "#f1f5f9", color: "#64748b", fontSize: 12, fontWeight: 600, borderRadius: 20 }}
+              className="px-2.5 py-1">
+              {total} tareas
+            </span>
+          </div>
+
+          {loading ? (
+            <div className="px-6 py-16 text-center" style={{ color: "#cbd5e1" }}>Cargando…</div>
+          ) : tasks.length === 0 ? (
+            <div className="px-6 py-16 text-center" style={{ color: "#94a3b8" }}>
+              No hay plan para este día.
             </div>
           ) : (
-            <div style={{...card,padding:"20px",textAlign:"center",color:"#94a3b8",fontSize:13}} className="flex-fill">
-              Fin de semana — sin horario fijo.
-            </div>
+            <ul className="divide-y" style={{ "--tw-divide-opacity": 1 }}>
+              {tasks.map((t) => {
+                const f = FRENTES[t.frente] || FRENTES.sc200;
+                return (
+                  <li key={t.id}
+                    style={{ borderColor: "#f8fafc", borderLeftWidth: 4, borderLeftColor: t.done ? "#e2e8f0" : f.color }}
+                    className="flex items-center gap-4 px-6 py-4 sm:py-5 hover:bg-slate-50 transition-colors border-l-4 border-b border-b-slate-50"
+                  >
+                    {/* Checkbox */}
+                    <button
+                      onClick={() => toggle(t.id)}
+                      style={{
+                        border: `2px solid ${t.done ? f.color : "#cbd5e1"}`,
+                        background: t.done ? f.color : "#fff",
+                        color: "#fff",
+                        borderRadius: 8,
+                        minWidth: 24, minHeight: 24,
+                        boxShadow: t.done ? `0 2px 8px ${f.color}40` : "none",
+                        transition: "all .2s",
+                      }}
+                      className="w-6 h-6 shrink-0 flex items-center justify-center text-xs font-bold"
+                    >
+                      {t.done ? "✓" : ""}
+                    </button>
+
+                    {/* Texto */}
+                    <span style={{
+                      color: t.done ? "#94a3b8" : "#1e293b",
+                      textDecoration: t.done ? "line-through" : "none",
+                      fontSize: 15, flex: 1,
+                    }}>
+                      {t.text}
+                    </span>
+
+                    {/* Badge frente */}
+                    <span style={{
+                      color: t.done ? "#94a3b8" : f.color,
+                      background: t.done ? "#f8fafc" : f.bg,
+                      fontSize: 11, fontWeight: 600,
+                      borderRadius: 20, padding: "3px 10px",
+                      whiteSpace: "nowrap",
+                    }}
+                      className="hidden sm:inline-block">
+                      {f.label}
+                    </span>
+
+                    {/* Borrar */}
+                    <button onClick={() => remove(t.id)}
+                      style={{ color: "#cbd5e1", fontSize: 14, lineHeight: 1 }}
+                      className="shrink-0 hover:text-red-400 transition-colors px-1"
+                      aria-label="Borrar">
+                      ✕
+                    </button>
+                  </li>
+                );
+              })}
+            </ul>
           )}
         </div>
 
-        {/* ══ COLUMNA DERECHA ══ */}
-        <div className="col-right">
-
-          {/* Lista de tareas — flex:1 para llenar el espacio */}
-          <div style={{...card,flex:1,minHeight:0,display:"flex",flexDirection:"column",overflow:"hidden"}}>
-            <div style={{padding:"11px 18px",borderBottom:"1px solid #f1f5f9",display:"flex",alignItems:"center",justifyContent:"space-between",flexShrink:0}}>
-              <span style={{fontWeight:700,fontSize:14,color:"#0f172a"}}>Objetivos</span>
-              <span style={{background:"#f1f5f9",color:"#64748b",fontSize:11,fontWeight:600,borderRadius:20,padding:"2px 10px"}}>{total} tareas</span>
-            </div>
-            <div style={{flex:1,overflowY:"auto",minHeight:0,display:"flex",flexDirection:"column"}}>
-              {loading ? (
-                <div style={{color:"#cbd5e1",padding:"32px",textAlign:"center",fontSize:13,flex:1,display:"flex",alignItems:"center",justifyContent:"center"}}>Cargando…</div>
-              ) : tasks.length===0 ? (
-                <div style={{color:"#94a3b8",padding:"32px",textAlign:"center",fontSize:13,flex:1,display:"flex",alignItems:"center",justifyContent:"center"}}>Sin objetivos para este día.</div>
-              ) : (
-                <ul style={{margin:0,padding:0,listStyle:"none",flex:1,display:"flex",flexDirection:"column"}}>
-                  {tasks.map(t=>{
-                    const f=FRENTES[t.frente]||FRENTES.sc200;
-                    return (
-                      <li key={t.id} style={{borderLeft:`4px solid ${t.done?"#e2e8f0":f.color}`,borderBottom:"1px solid #f8fafc",display:"flex",alignItems:"center",gap:12,padding:"0 18px",flex:1,minHeight:52,transition:"background .15s",cursor:"default"}}
-                        onMouseEnter={e=>e.currentTarget.style.background="#fafafa"}
-                        onMouseLeave={e=>e.currentTarget.style.background="transparent"}>
-                        <button onClick={()=>toggle(t.id)}
-                          style={{border:`2px solid ${t.done?f.color:"#cbd5e1"}`,background:t.done?f.color:"#fff",color:"#fff",borderRadius:7,width:22,height:22,display:"flex",alignItems:"center",justifyContent:"center",fontSize:11,fontWeight:700,flexShrink:0,cursor:"pointer",boxShadow:t.done?`0 2px 8px ${f.color}40`:"none",transition:"all .2s"}}>
-                          {t.done?"✓":""}
-                        </button>
-                        <span style={{flex:1,fontSize:14,color:t.done?"#94a3b8":"#1e293b",textDecoration:t.done?"line-through":"none"}}>
-                          {t.text}
-                        </span>
-                        <span style={{color:t.done?"#94a3b8":f.color,background:t.done?"#f8fafc":f.bg,fontSize:10,fontWeight:600,borderRadius:20,padding:"2px 9px",flexShrink:0}}>
-                          {f.label}
-                        </span>
-                        <button onClick={()=>remove(t.id)}
-                          style={{color:"#cbd5e1",fontSize:13,background:"none",border:"none",cursor:"pointer",flexShrink:0,lineHeight:1,padding:"0 2px"}}
-                          onMouseEnter={e=>e.currentTarget.style.color="#f87171"}
-                          onMouseLeave={e=>e.currentTarget.style.color="#cbd5e1"}>
-                          ✕
-                        </button>
-                      </li>
-                    );
-                  })}
-                </ul>
-              )}
-            </div>
+        {/* ── AGREGAR ── */}
+        <div style={{ background: "#fff", border: "1px solid #e2e8f0", borderRadius: 20, boxShadow: "0 1px 4px rgba(15,23,42,.06)" }}
+          className="px-6 py-5">
+          <p style={{ color: "#0f172a", fontWeight: 700, fontSize: 15, marginBottom: 14 }}>Agregar objetivo</p>
+          <div className="flex gap-2 flex-wrap sm:flex-nowrap">
+            <input
+              type="text"
+              value={newText}
+              onChange={(e) => setNewText(e.target.value)}
+              onKeyDown={(e) => e.key === "Enter" && addTask()}
+              placeholder="Descripción del objetivo…"
+              style={{ background: "#f8fafc", border: "1.5px solid #e2e8f0", color: "#1e293b", borderRadius: 12, fontSize: 14 }}
+              className="flex-1 min-w-0 px-4 py-3 outline-none focus:border-blue-400 transition-colors placeholder:text-slate-400"
+            />
+            <select
+              value={newFrente}
+              onChange={(e) => setNewFrente(e.target.value)}
+              style={{ background: "#f8fafc", border: "1.5px solid #e2e8f0", color: "#1e293b", borderRadius: 12, fontSize: 14 }}
+              className="px-3 py-3 outline-none"
+            >
+              {FRENTE_KEYS.map((k) => (
+                <option key={k} value={k}>{FRENTES[k].label}</option>
+              ))}
+            </select>
+            <button
+              onClick={addTask}
+              style={{ background: "linear-gradient(135deg,#3b82f6,#6366f1)", color: "#fff", borderRadius: 12, fontSize: 14, fontWeight: 600, boxShadow: "0 4px 14px rgba(99,102,241,.4)" }}
+              className="px-6 py-3 hover:opacity-90 transition-opacity whitespace-nowrap"
+            >
+              + Agregar
+            </button>
           </div>
-
-          {/* Agregar objetivo */}
-          <div style={{...card,padding:"12px 16px",flexShrink:0}}>
-            <div style={{display:"flex",gap:8}}>
-              <input type="text" value={newText} onChange={e=>setNewText(e.target.value)}
-                onKeyDown={e=>e.key==="Enter"&&addTask()} placeholder="Agregar objetivo…"
-                style={{flex:1,background:"#f8fafc",border:"1.5px solid #e2e8f0",color:"#1e293b",borderRadius:10,fontSize:13,padding:"9px 14px",outline:"none",fontFamily:"inherit"}}
-                onFocus={e=>e.target.style.borderColor="#93c5fd"}
-                onBlur={e=>e.target.style.borderColor="#e2e8f0"}/>
-              <select value={newFrente} onChange={e=>setNewFrente(e.target.value)}
-                style={{background:"#f8fafc",border:"1.5px solid #e2e8f0",color:"#1e293b",borderRadius:10,fontSize:13,padding:"9px 10px",outline:"none",cursor:"pointer",fontFamily:"inherit"}}>
-                {FRENTE_KEYS.map(k=><option key={k} value={k}>{FRENTES[k].label}</option>)}
-              </select>
-              <button onClick={addTask}
-                style={{background:"linear-gradient(135deg,#3b82f6,#6366f1)",color:"#fff",borderRadius:10,fontSize:13,fontWeight:600,padding:"9px 18px",border:"none",cursor:"pointer",boxShadow:"0 3px 12px rgba(99,102,241,.35)",whiteSpace:"nowrap"}}>
-                + Agregar
-              </button>
-            </div>
-          </div>
-
-          {/* Frentes activos */}
-          <div style={{...card,padding:"11px 16px",flexShrink:0}}>
-            <p style={{color:"#94a3b8",fontSize:10,fontWeight:600,letterSpacing:"0.1em",textTransform:"uppercase",marginBottom:9}}>Frentes activos</p>
-            <div style={{display:"flex",flexWrap:"wrap",gap:7}}>
-              {FRENTE_KEYS.map(k=>{
-                const f=FRENTES[k];
-                const cnt=tasks.filter(t=>t.frente===k).length;
-                const dn=tasks.filter(t=>t.frente===k&&t.done).length;
-                return (
-                  <div key={k} style={{background:f.bg,border:`1px solid ${f.color}28`,borderRadius:20,display:"flex",alignItems:"center",gap:6,padding:"4px 11px"}}>
-                    <span style={{width:7,height:7,borderRadius:"50%",background:f.color,display:"inline-block",flexShrink:0}}/>
-                    <span style={{color:"#374151",fontSize:12,fontWeight:500}}>{f.label}</span>
-                    {cnt>0&&<span style={{color:f.color,fontSize:11,fontWeight:700}}>{dn}/{cnt}</span>}
-                  </div>
-                );
-              })}
-            </div>
-          </div>
-
         </div>
+
+        {/* ── FRENTES ── */}
+        <div style={{ background: "#fff", border: "1px solid #e2e8f0", borderRadius: 20, boxShadow: "0 1px 4px rgba(15,23,42,.06)" }}
+          className="px-6 py-5">
+          <p style={{ color: "#94a3b8", fontSize: 11, fontWeight: 600, letterSpacing: "0.1em", textTransform: "uppercase", marginBottom: 14 }}>
+            Frentes activos
+          </p>
+          <div className="flex flex-wrap gap-2">
+            {FRENTE_KEYS.map((k) => {
+              const f = FRENTES[k];
+              const count = tasks.filter((t) => t.frente === k).length;
+              const done  = tasks.filter((t) => t.frente === k && t.done).length;
+              return (
+                <div key={k}
+                  style={{ background: f.bg, border: `1px solid ${f.color}30`, borderRadius: 12 }}
+                  className="flex items-center gap-2 px-3 py-2">
+                  <span style={{ width: 8, height: 8, borderRadius: "50%", background: f.color, display: "inline-block", flexShrink: 0 }} />
+                  <span style={{ color: "#374151", fontSize: 13, fontWeight: 500 }}>{f.label}</span>
+                  {count > 0 && (
+                    <span style={{ color: f.color, fontSize: 11, fontWeight: 700 }}>{done}/{count}</span>
+                  )}
+                </div>
+              );
+            })}
+          </div>
+        </div>
+
+        {/* ── HORARIO (solo días de semana) ── */}
+        {[1,2,3,4,5].includes(date.getDay()) && (
+          <div style={{ background: "#fff", border: "1px solid #e2e8f0", borderRadius: 20, boxShadow: "0 1px 4px rgba(15,23,42,.06)" }}
+            className="overflow-hidden">
+            <div style={{ borderBottom: "1px solid #f1f5f9" }} className="px-6 py-4">
+              <span style={{ color: "#0f172a", fontWeight: 700, fontSize: 16 }}>Horario del día</span>
+            </div>
+            <div className="px-6 py-5">
+              <div style={{ borderLeft: "2px solid #e2e8f0", display: "grid", gridTemplateColumns: "100px 1fr", gap: 0 }}>
+                {HORARIO.map((item, i) => (
+                  <>
+                    <div key={`t${i}`} style={{
+                      fontSize: 12,
+                      fontWeight: item.type === "block" ? 600 : 400,
+                      color: item.type === "block" ? "#374151" : "#9ca3af",
+                      padding: "10px 12px",
+                      lineHeight: 1.4,
+                    }}>
+                      {item.time}
+                    </div>
+                    <div key={`c${i}`} style={{ padding: "6px 4px 6px 0" }}>
+                      {item.type === "block" ? (
+                        <div style={{
+                          background: item.bg,
+                          border: `0.5px solid ${item.border}`,
+                          borderRadius: 10,
+                          padding: "8px 12px",
+                        }}>
+                          <div style={{ fontSize: 13, fontWeight: 600, color: item.text }}>{item.label}</div>
+                          <div style={{ fontSize: 12, color: item.sub_color, marginTop: 2 }}>{item.sub}</div>
+                        </div>
+                      ) : (
+                        <div style={{ fontSize: 13, color: "#9ca3af", padding: "4px 0", lineHeight: 1.5 }}>
+                          {item.label}
+                        </div>
+                      )}
+                    </div>
+                  </>
+                ))}
+              </div>
+            </div>
+          </div>
+        )}
+
       </div>
     </div>
   );
