@@ -196,23 +196,23 @@ export default function OrganizadorSOC() {
         {/* ══ COLUMNA DERECHA ══ */}
         <div className="col-right">
 
-          {/* Lista de tareas — altura natural */}
-          <div style={{...card}}>
-            <div style={{padding:"11px 18px",borderBottom:"1px solid #f1f5f9",display:"flex",alignItems:"center",justifyContent:"space-between"}}>
+          {/* Lista de tareas — flex:1 para llenar el espacio */}
+          <div style={{...card,flex:1,minHeight:0,display:"flex",flexDirection:"column",overflow:"hidden"}}>
+            <div style={{padding:"11px 18px",borderBottom:"1px solid #f1f5f9",display:"flex",alignItems:"center",justifyContent:"space-between",flexShrink:0}}>
               <span style={{fontWeight:700,fontSize:14,color:"#0f172a"}}>Objetivos</span>
               <span style={{background:"#f1f5f9",color:"#64748b",fontSize:11,fontWeight:600,borderRadius:20,padding:"2px 10px"}}>{total} tareas</span>
             </div>
-            <div style={{overflowY:"auto",maxHeight:"calc(100dvh - 300px)"}}>
+            <div style={{flex:1,overflowY:"auto",minHeight:0,display:"flex",flexDirection:"column"}}>
               {loading ? (
-                <div style={{color:"#cbd5e1",padding:"32px",textAlign:"center",fontSize:13}}>Cargando…</div>
+                <div style={{color:"#cbd5e1",padding:"32px",textAlign:"center",fontSize:13,flex:1,display:"flex",alignItems:"center",justifyContent:"center"}}>Cargando…</div>
               ) : tasks.length===0 ? (
-                <div style={{color:"#94a3b8",padding:"32px",textAlign:"center",fontSize:13}}>Sin objetivos para este día.</div>
+                <div style={{color:"#94a3b8",padding:"32px",textAlign:"center",fontSize:13,flex:1,display:"flex",alignItems:"center",justifyContent:"center"}}>Sin objetivos para este día.</div>
               ) : (
-                <ul style={{margin:0,padding:0,listStyle:"none"}}>
+                <ul style={{margin:0,padding:0,listStyle:"none",flex:1,display:"flex",flexDirection:"column"}}>
                   {tasks.map(t=>{
                     const f=FRENTES[t.frente]||FRENTES.sc200;
                     return (
-                      <li key={t.id} style={{borderLeft:`4px solid ${t.done?"#e2e8f0":f.color}`,borderBottom:"1px solid #f8fafc",display:"flex",alignItems:"center",gap:12,padding:"14px 18px",transition:"background .15s",cursor:"default"}}
+                      <li key={t.id} style={{borderLeft:`4px solid ${t.done?"#e2e8f0":f.color}`,borderBottom:"1px solid #f8fafc",display:"flex",alignItems:"center",gap:12,padding:"0 18px",flex:1,minHeight:52,transition:"background .15s",cursor:"default"}}
                         onMouseEnter={e=>e.currentTarget.style.background="#fafafa"}
                         onMouseLeave={e=>e.currentTarget.style.background="transparent"}>
                         <button onClick={()=>toggle(t.id)}
