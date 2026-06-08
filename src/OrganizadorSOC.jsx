@@ -30,6 +30,16 @@ const PLAN_SUGERIDO = {
   ],
 };
 
+const HORARIO = [
+  { time: "08:30",        label: "Despertar, desayuno",                        type: "rest" },
+  { time: "09:00–11:00",  label: "Bloque 1 · SC-200 (2h)",                     sub: "Cabeza fresca, lo más exigente del día",       type: "block", bg: "#E6F1FB", border: "#185FA5", text: "#0C447C", sub_color: "#185FA5" },
+  { time: "16:00–17:30",  label: "Bloque 2 · frente del día (1.5h)",           sub: "Cisco / Wazuh / búsqueda, según el día",       type: "block", bg: "#E1F5EE", border: "#0F6E56", text: "#085041", sub_color: "#0F6E56" },
+  { time: "17:30–21:30",  label: "Cena / descanso / vida",                     type: "rest" },
+  { time: "21:30–22:15",  label: "Bloque 3 · inglés técnico (45 min)",         sub: "Lo más liviano: hablar, escuchar, repasar",    type: "block", bg: "#FAEEDA", border: "#BA7517", text: "#854F0B", sub_color: "#BA7517" },
+  { time: "22:15–23:00",  label: "Bajar revoluciones, lejos de pantalla pesada", type: "rest" },
+  { time: "23:00",        label: "A dormir",                                   type: "rest" },
+];
+
 const ymd = (d) =>
   `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
 const uid = () => Math.random().toString(36).slice(2, 9);
@@ -321,6 +331,50 @@ export default function OrganizadorSOC() {
             })}
           </div>
         </div>
+
+        {/* ── HORARIO (solo días de semana) ── */}
+        {[1,2,3,4,5].includes(date.getDay()) && (
+          <div style={{ background: "#fff", border: "1px solid #e2e8f0", borderRadius: 20, boxShadow: "0 1px 4px rgba(15,23,42,.06)" }}
+            className="overflow-hidden">
+            <div style={{ borderBottom: "1px solid #f1f5f9" }} className="px-6 py-4">
+              <span style={{ color: "#0f172a", fontWeight: 700, fontSize: 16 }}>Horario del día</span>
+            </div>
+            <div className="px-6 py-5">
+              <div style={{ borderLeft: "2px solid #e2e8f0", display: "grid", gridTemplateColumns: "100px 1fr", gap: 0 }}>
+                {HORARIO.map((item, i) => (
+                  <>
+                    <div key={`t${i}`} style={{
+                      fontSize: 12,
+                      fontWeight: item.type === "block" ? 600 : 400,
+                      color: item.type === "block" ? "#374151" : "#9ca3af",
+                      padding: "10px 12px",
+                      lineHeight: 1.4,
+                    }}>
+                      {item.time}
+                    </div>
+                    <div key={`c${i}`} style={{ padding: "6px 4px 6px 0" }}>
+                      {item.type === "block" ? (
+                        <div style={{
+                          background: item.bg,
+                          border: `0.5px solid ${item.border}`,
+                          borderRadius: 10,
+                          padding: "8px 12px",
+                        }}>
+                          <div style={{ fontSize: 13, fontWeight: 600, color: item.text }}>{item.label}</div>
+                          <div style={{ fontSize: 12, color: item.sub_color, marginTop: 2 }}>{item.sub}</div>
+                        </div>
+                      ) : (
+                        <div style={{ fontSize: 13, color: "#9ca3af", padding: "4px 0", lineHeight: 1.5 }}>
+                          {item.label}
+                        </div>
+                      )}
+                    </div>
+                  </>
+                ))}
+              </div>
+            </div>
+          </div>
+        )}
 
       </div>
     </div>
