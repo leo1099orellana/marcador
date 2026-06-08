@@ -1,13 +1,30 @@
 import { useState, useEffect, useCallback } from "react";
 
+// ── Paleta ─────────────────────────────────────────────────────────────────
+const C = {
+  bg:      "#08090c",
+  panel:   "#101319",
+  panel2:  "#161a22",
+  border:  "#1e2430",
+  border2: "#262d3a",
+  txt:     "#dfe3ea",
+  txt2:    "#aab3c4",   // más claro que el original para mejor lectura
+  txt3:    "#788090",   // más claro que el original para mejor lectura
+  accent:  "#34d399",
+  blue:    "#3b82f6",
+};
+
+const FONT = 'ui-monospace,"SF Mono",SFMono-Regular,Menlo,Consolas,monospace';
+
+// ── Datos ──────────────────────────────────────────────────────────────────
 const FRENTES = {
-  sc200:     { label: "SC-200",     color: "#3b82f6", bg: "#eff6ff" },
-  wazuh:     { label: "Wazuh",      color: "#7c3aed", bg: "#f5f3ff" },
-  azure:     { label: "Azure",      color: "#0891b2", bg: "#ecfeff" },
-  cisco:     { label: "Cisco",      color: "#059669", bg: "#ecfdf5" },
-  ingles:    { label: "Inglés",     color: "#d97706", bg: "#fffbeb" },
-  busqueda:  { label: "Búsqueda",   color: "#ea580c", bg: "#fff7ed" },
-  freelance: { label: "Freelance",  color: "#db2777", bg: "#fdf2f8" },
+  sc200:     { label: "SC-200",    color: "#3b82f6" },
+  wazuh:     { label: "Wazuh",     color: "#8b5cf6" },
+  azure:     { label: "Azure",     color: "#06b6d4" },
+  cisco:     { label: "Cisco",     color: "#34d399" },
+  ingles:    { label: "Inglés",    color: "#f59e0b" },
+  busqueda:  { label: "Búsqueda",  color: "#f97316" },
+  freelance: { label: "Freelance", color: "#ec4899" },
 };
 const FRENTE_KEYS = Object.keys(FRENTES);
 
@@ -17,7 +34,6 @@ const WEEKDAY = [
   { frente: "cisco",  text: "Cisco: módulo del día (1.5h)" },
   { frente: "ingles", text: "Inglés: práctica diaria (45m)" },
 ];
-
 const PLAN_SUGERIDO = {
   1: WEEKDAY, 2: WEEKDAY, 3: WEEKDAY, 4: WEEKDAY, 5: WEEKDAY,
   6: [
@@ -30,16 +46,21 @@ const PLAN_SUGERIDO = {
   ],
 };
 
+// minutos desde medianoche
 const HORARIO = [
-  { time: "08:30",        label: "Despertar, desayuno",                        type: "rest" },
-  { time: "09:00–11:00",  label: "Bloque 1 · SC-200 (2h)",                     sub: "Cabeza fresca, lo más exigente del día",       type: "block", bg: "#E6F1FB", border: "#185FA5", text: "#0C447C", sub_color: "#185FA5" },
-  { time: "16:00–17:30",  label: "Bloque 2 · frente del día (1.5h)",           sub: "Cisco / Wazuh / búsqueda, según el día",       type: "block", bg: "#E1F5EE", border: "#0F6E56", text: "#085041", sub_color: "#0F6E56" },
-  { time: "17:30–21:30",  label: "Cena / descanso / vida",                     type: "rest" },
-  { time: "21:30–22:15",  label: "Bloque 3 · inglés técnico (45 min)",         sub: "Lo más liviano: hablar, escuchar, repasar",    type: "block", bg: "#FAEEDA", border: "#BA7517", text: "#854F0B", sub_color: "#BA7517" },
-  { time: "22:15–23:00",  label: "Bajar revoluciones, lejos de pantalla pesada", type: "rest" },
-  { time: "23:00",        label: "A dormir",                                   type: "rest" },
+  { from: 510,  to: 540,  label: "Despertar, desayuno" },
+  { from: 540,  to: 660,  block: true,  title: "Bloque 1 · SC-200 (2h)",           note: "Cabeza fresca, lo más exigente del día" },
+  { from: 960,  to: 1050, block: true,  title: "Bloque 2 · frente del día (1.5h)", note: "Cisco / Wazuh / búsqueda, según el día" },
+  { from: 1050, to: 1290, label: "Cena / descanso / vida" },
+  { from: 1290, to: 1335, block: true,  title: "Bloque 3 · inglés técnico (45 min)", note: "Lo más liviano: hablar, escuchar, repasar" },
+  { from: 1335, to: 1380, label: "Bajar revoluciones, lejos de pantalla pesada" },
+  { from: 1380, to: 1440, label: "A dormir" },
 ];
 
+const hhmm = (m) => `${String(Math.floor(m / 60)).padStart(2, "0")}:${String(m % 60).padStart(2, "0")}`;
+const rango = (it) => `${hhmm(it.from)}–${hhmm(it.to)}`;
+
+// ── Helpers storage ────────────────────────────────────────────────────────
 const ymd = (d) =>
   `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
 const uid = () => Math.random().toString(36).slice(2, 9);
@@ -48,334 +69,324 @@ const lsSet = (k, v) => { try { localStorage.setItem(k, v); } catch { /**/ } };
 const buildPlan = (d) =>
   (PLAN_SUGERIDO[d.getDay()] || []).map((s) => ({ id: uid(), text: s.text, frente: s.frente, done: false }));
 
+const loadDay = (d) => {
+  const k = `soc:dia:${ymd(d)}`;
+  let saved = null;
+  try { saved = JSON.parse(lsGet(k)); } catch { /**/ }
+  if (saved && saved.length > 0) return saved;
+  const plan = buildPlan(d);
+  lsSet(k, JSON.stringify(plan));
+  return plan;
+};
+
+// ── Componente ─────────────────────────────────────────────────────────────
 export default function OrganizadorSOC() {
   const [date, setDate]           = useState(new Date());
-  const [tasks, setTasks]         = useState([]);
-  const [loading, setLoading]     = useState(true);
+  const [tasks, setTasks]         = useState(() => loadDay(new Date()));
   const [newText, setNewText]     = useState("");
   const [newFrente, setNewFrente] = useState("sc200");
+  const [nowMin, setNowMin]       = useState(() => {
+    const n = new Date(); return n.getHours() * 60 + n.getMinutes();
+  });
+
+  // Actualizar "AHORA" cada minuto
+  useEffect(() => {
+    const t = setInterval(() => {
+      const n = new Date(); setNowMin(n.getHours() * 60 + n.getMinutes());
+    }, 60000);
+    return () => clearInterval(t);
+  }, []);
 
   const key = `soc:dia:${ymd(date)}`;
 
-  useEffect(() => {
-    setLoading(true);
-    const raw = lsGet(key);
-    let saved = null;
-    try { saved = raw ? JSON.parse(raw) : null; } catch { /**/ }
-    if (saved && saved.length > 0) {
-      setTasks(saved);
-    } else {
-      const plan = buildPlan(date);
-      setTasks(plan);
-      lsSet(key, JSON.stringify(plan));
-    }
-    setLoading(false);
-  }, [key]);
-
-  const persist = useCallback((next) => { setTasks(next); lsSet(key, JSON.stringify(next)); }, [key]);
-  const resetDia = () => persist(buildPlan(date));
-  const addTask = () => {
-    const t = newText.trim();
-    if (!t) return;
-    persist([...tasks, { id: uid(), text: t, frente: newFrente, done: false }]);
-    setNewText("");
-  };
-  const toggle = (id) => persist(tasks.map((x) => (x.id === id ? { ...x, done: !x.done } : x)));
-  const remove = (id) => persist(tasks.filter((x) => x.id !== id));
-  const cambiarDia = (delta) => { const d = new Date(date); d.setDate(d.getDate() + delta); setDate(d); };
+  const persist     = useCallback((next) => { setTasks(next); lsSet(key, JSON.stringify(next)); }, [key]);
+  const resetDia    = () => { if (tasks.length && !window.confirm("¿Borrar todos los objetivos de este día?")) return; persist(buildPlan(date)); };
+  const addTask     = () => { const t = newText.trim(); if (!t) return; persist([...tasks, { id: uid(), text: t, frente: newFrente, done: false }]); setNewText(""); };
+  const toggle      = (id) => persist(tasks.map((x) => (x.id === id ? { ...x, done: !x.done } : x)));
+  const remove      = (id) => persist(tasks.filter((x) => x.id !== id));
+  const cambiarDia  = (d) => { const n = new Date(date); n.setDate(n.getDate() + d); setDate(n); setTasks(loadDay(n)); };
 
   const hechas = tasks.filter((t) => t.done).length;
   const total  = tasks.length;
   const pct    = total ? Math.round((hechas / total) * 100) : 0;
   const esHoy  = ymd(date) === ymd(new Date());
 
+  // Bloque activo en el horario
+  const curBlock = esHoy ? (HORARIO.find((it) => nowMin >= it.from && nowMin < it.to) || null) : null;
+
   const fechaLabel = date.toLocaleDateString("es-AR", { weekday: "long", day: "numeric", month: "long" });
 
-  // Progreso circular (SVG)
-  const r = 28, circ = 2 * Math.PI * r;
-  const dash = circ - (pct / 100) * circ;
+  // Ring SVG (r=25, circ≈157)
+  const R = 25, CIRC = 2 * Math.PI * R;
+  const ringOffset = CIRC - (pct / 100) * CIRC;
+  const ringColor  = pct === 100 && total ? C.accent : C.blue;
+
+  // Frentes que tienen tareas
+  const frentesActivos = FRENTE_KEYS.reduce((acc, k) => {
+    const total = tasks.filter((t) => t.frente === k).length;
+    if (total > 0) acc[k] = { total, done: tasks.filter((t) => t.frente === k && t.done).length };
+    return acc;
+  }, {});
+
+  // ── Estilos compartidos ──────────────────────────────────────────────────
+  const panel = {
+    background: C.panel, border: `1px solid ${C.border}`,
+    borderRadius: 10, marginBottom: 14, overflow: "hidden",
+  };
 
   return (
-    <div style={{ background: "#f1f5f9", minHeight: "100vh", fontFamily: "Inter, ui-sans-serif, system-ui, sans-serif" }}>
+    <div style={{ background: C.bg, color: C.txt, fontFamily: FONT, minHeight: "100vh",
+      padding: "28px 16px",
+      backgroundImage: "radial-gradient(800px 400px at 50% -120px, rgba(52,211,153,.06), transparent 70%)" }}>
+      <div style={{ maxWidth: 560, margin: "0 auto" }}>
 
-      {/* ── NAV ── */}
-      <header style={{ background: "#fff", borderBottom: "1px solid #e2e8f0", boxShadow: "0 1px 3px rgba(15,23,42,.06)" }}>
-        <div className="max-w-3xl mx-auto px-4 sm:px-8 py-4 flex items-center justify-between">
-          <div className="flex items-center gap-2">
-            <div style={{ background: "linear-gradient(135deg,#3b82f6,#6366f1)", borderRadius: 10 }}
-              className="w-8 h-8 flex items-center justify-center">
-              <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
-                <rect x="2" y="2" width="5" height="5" rx="1" fill="white" />
-                <rect x="9" y="2" width="5" height="5" rx="1" fill="white" opacity=".7" />
-                <rect x="2" y="9" width="5" height="5" rx="1" fill="white" opacity=".7" />
-                <rect x="9" y="9" width="5" height="5" rx="1" fill="white" opacity=".4" />
-              </svg>
-            </div>
-            <span style={{ color: "#0f172a", fontWeight: 700, fontSize: 17 }}>SOC Tracker</span>
+        {/* ── HEADER ── */}
+        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 22 }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 9 }}>
+            <span style={{ width: 26, height: 26, borderRadius: 6, flexShrink: 0,
+              background: "linear-gradient(135deg,#34d399,#10b981)",
+              display: "flex", alignItems: "center", justifyContent: "center",
+              color: "#06281e", fontWeight: 700, fontSize: 13 }}>✦</span>
+            <span>
+              <b style={{ fontSize: 14, letterSpacing: "0.12em" }}>SOC_TRACKER</b>
+              <span style={{ display: "block", fontSize: 9, color: C.txt3, letterSpacing: "0.22em", marginTop: 1 }}>// DAILY OPS</span>
+            </span>
           </div>
-          <button
-            onClick={resetDia}
-            style={{ color: "#64748b", border: "1px solid #e2e8f0", background: "#fff", borderRadius: 8, fontSize: 13 }}
-            className="px-3 py-1.5 hover:bg-slate-50 transition-colors flex items-center gap-1.5"
-          >
-            <span>↺</span> Resetear día
+          <button onClick={resetDia}
+            style={{ background: "none", border: `1px solid ${C.border2}`, color: C.txt2, fontFamily: FONT,
+              fontSize: 11, borderRadius: 6, padding: "6px 10px", cursor: "pointer", letterSpacing: "0.04em" }}
+            onMouseEnter={(e) => { e.target.style.borderColor = "#3a4252"; e.target.style.color = C.txt; }}
+            onMouseLeave={(e) => { e.target.style.borderColor = C.border2; e.target.style.color = C.txt2; }}>
+            ↻ RESETEAR DÍA
           </button>
         </div>
-      </header>
-
-      <div className="max-w-3xl mx-auto px-4 sm:px-8 py-8 space-y-5">
 
         {/* ── FECHA ── */}
-        <div style={{ background: "#fff", border: "1px solid #e2e8f0", borderRadius: 20, boxShadow: "0 1px 4px rgba(15,23,42,.06)" }}
-          className="px-6 py-5">
-          <div className="flex items-center justify-between">
-            <button
-              onClick={() => cambiarDia(-1)}
-              style={{ background: "#f8fafc", border: "1px solid #e2e8f0", color: "#64748b", borderRadius: 12 }}
-              className="w-10 h-10 flex items-center justify-center text-xl hover:bg-slate-100 transition-colors"
-              aria-label="Día anterior"
-            >‹</button>
-
-            <div className="text-center">
-              <p style={{ color: "#94a3b8", fontSize: 11, fontWeight: 600, letterSpacing: "0.1em", textTransform: "uppercase" }}>
-                Plan del día
-              </p>
-              <h1 style={{ color: "#0f172a", fontSize: "clamp(1.3rem, 4vw, 1.75rem)", fontWeight: 700, letterSpacing: "-0.02em" }}
-                className="capitalize mt-0.5">
-                {fechaLabel}
-              </h1>
-              {esHoy && (
-                <span style={{ background: "#dcfce7", color: "#16a34a", fontSize: 11, fontWeight: 600, borderRadius: 20 }}
-                  className="inline-block px-3 py-0.5 mt-1">
-                  Hoy
-                </span>
-              )}
-            </div>
-
-            <button
-              onClick={() => cambiarDia(1)}
-              style={{ background: "#f8fafc", border: "1px solid #e2e8f0", color: "#64748b", borderRadius: 12 }}
-              className="w-10 h-10 flex items-center justify-center text-xl hover:bg-slate-100 transition-colors"
-              aria-label="Día siguiente"
-            >›</button>
+        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between",
+          background: C.panel, border: `1px solid ${C.border}`, borderRadius: 10,
+          padding: "12px 8px", marginBottom: 14 }}>
+          <button onClick={() => cambiarDia(-1)}
+            style={{ background: "none", border: "none", color: C.txt3, fontSize: 20, cursor: "pointer",
+              padding: "0 12px", fontFamily: FONT, lineHeight: 1 }}
+            onMouseEnter={(e) => e.target.style.color = C.txt}
+            onMouseLeave={(e) => e.target.style.color = C.txt3}>‹</button>
+          <div style={{ flex: 1, textAlign: "center" }}>
+            <div style={{ fontSize: 9, color: C.txt3, letterSpacing: "0.2em" }}>PLAN DEL DÍA</div>
+            <h1 style={{ fontSize: 16, color: "#fff", fontWeight: 600, textTransform: "capitalize", marginTop: 2, fontFamily: FONT }}>
+              {fechaLabel}
+            </h1>
+            {esHoy && (
+              <span style={{ display: "inline-block", marginTop: 3, fontSize: 9, color: C.accent,
+                border: `1px solid rgba(52,211,153,.35)`, borderRadius: 4, padding: "1px 7px", letterSpacing: "0.12em" }}>
+                ● HOY
+              </span>
+            )}
           </div>
+          <button onClick={() => cambiarDia(1)}
+            style={{ background: "none", border: "none", color: C.txt3, fontSize: 20, cursor: "pointer",
+              padding: "0 12px", fontFamily: FONT, lineHeight: 1 }}
+            onMouseEnter={(e) => e.target.style.color = C.txt}
+            onMouseLeave={(e) => e.target.style.color = C.txt3}>›</button>
         </div>
 
         {/* ── PROGRESO ── */}
-        <div style={{ background: "linear-gradient(135deg,#1e40af 0%,#4f46e5 50%,#7c3aed 100%)", borderRadius: 20, boxShadow: "0 4px 20px rgba(79,70,229,.3)" }}
-          className="px-6 py-5 flex items-center gap-5">
-
-          {/* Anillo */}
-          <div className="shrink-0 relative">
-            <svg width="72" height="72" style={{ transform: "rotate(-90deg)" }}>
-              <circle cx="36" cy="36" r={r} fill="none" stroke="rgba(255,255,255,.2)" strokeWidth="6" />
-              <circle cx="36" cy="36" r={r} fill="none" stroke="white" strokeWidth="6"
-                strokeDasharray={circ} strokeDashoffset={dash}
+        <div style={{ display: "flex", alignItems: "center", gap: 16,
+          background: C.panel, border: `1px solid ${C.border}`, borderRadius: 10,
+          padding: 16, marginBottom: 14 }}>
+          <div style={{ position: "relative", width: 60, height: 60, flexShrink: 0 }}>
+            <svg width="60" height="60" style={{ transform: "rotate(-90deg)" }}>
+              <circle cx="30" cy="30" r={R} stroke={C.border} strokeWidth="5" fill="none" />
+              <circle cx="30" cy="30" r={R} stroke={ringColor} strokeWidth="5" fill="none"
                 strokeLinecap="round"
-                style={{ transition: "stroke-dashoffset .5s ease" }} />
+                strokeDasharray={CIRC} strokeDashoffset={ringOffset}
+                style={{ transition: "stroke-dashoffset .4s ease, stroke .3s" }} />
             </svg>
-            <span style={{ color: "#fff", fontWeight: 700, fontSize: 15, position: "absolute", inset: 0, display: "flex", alignItems: "center", justifyContent: "center" }}>
+            <div style={{ position: "absolute", inset: 0, display: "flex", alignItems: "center",
+              justifyContent: "center", fontSize: 14, fontWeight: 600, color: "#fff" }}>
               {pct}%
-            </span>
+            </div>
           </div>
-
           <div>
-            <p style={{ color: "rgba(255,255,255,.7)", fontSize: 13, marginBottom: 2 }}>Progreso del día</p>
-            <p style={{ color: "#fff", fontSize: 22, fontWeight: 800, letterSpacing: "-0.02em" }}>
-              {total === 0 ? "Sin objetivos" : `${hechas} / ${total} completadas`}
-            </p>
-            {pct === 100 && total > 0 && (
-              <p style={{ color: "#a5f3fc", fontSize: 13, marginTop: 2, fontWeight: 600 }}>
-                Día cerrado. Bien ahí. 🎯
-              </p>
-            )}
+            <div style={{ fontSize: 10, color: C.txt3, letterSpacing: "0.16em" }}>PROGRESO DEL DÍA</div>
+            <div style={{ fontSize: 18, fontWeight: 600, color: "#fff", marginTop: 2 }}>
+              {hechas} <span style={{ color: C.txt3, fontWeight: 400 }}>/ {total} completadas</span>
+            </div>
           </div>
         </div>
 
-        {/* ── TAREAS ── */}
-        <div style={{ background: "#fff", border: "1px solid #e2e8f0", borderRadius: 20, boxShadow: "0 1px 4px rgba(15,23,42,.06)" }}
-          className="overflow-hidden">
-
-          {/* Header sección */}
-          <div style={{ borderBottom: "1px solid #f1f5f9" }} className="px-6 py-4 flex items-center justify-between">
-            <span style={{ color: "#0f172a", fontWeight: 700, fontSize: 16 }}>Objetivos</span>
-            <span style={{ background: "#f1f5f9", color: "#64748b", fontSize: 12, fontWeight: 600, borderRadius: 20 }}
-              className="px-2.5 py-1">
-              {total} tareas
-            </span>
+        {/* ── OBJETIVOS ── */}
+        <div style={panel}>
+          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "13px 16px" }}>
+            <span style={{ fontSize: 12, letterSpacing: "0.08em", color: C.txt, fontWeight: 600 }}>OBJETIVOS</span>
+            <span style={{ fontSize: 10, color: C.txt3 }}>{total > 0 ? `${total} ${total === 1 ? "tarea" : "tareas"}` : ""}</span>
           </div>
 
-          {loading ? (
-            <div className="px-6 py-16 text-center" style={{ color: "#cbd5e1" }}>Cargando…</div>
-          ) : tasks.length === 0 ? (
-            <div className="px-6 py-16 text-center" style={{ color: "#94a3b8" }}>
-              No hay plan para este día.
+          {/* Lista */}
+          {tasks.length === 0 ? (
+            <div style={{ padding: "22px 16px", borderTop: `1px solid ${C.border}`, textAlign: "center", color: C.txt3, fontSize: 12 }}>
+              Sin objetivos para este día.
             </div>
           ) : (
-            <ul className="divide-y" style={{ "--tw-divide-opacity": 1 }}>
+            <>
               {tasks.map((t) => {
                 const f = FRENTES[t.frente] || FRENTES.sc200;
                 return (
-                  <li key={t.id}
-                    style={{ borderColor: "#f8fafc", borderLeftWidth: 4, borderLeftColor: t.done ? "#e2e8f0" : f.color }}
-                    className="flex items-center gap-4 px-6 py-4 sm:py-5 hover:bg-slate-50 transition-colors border-l-4 border-b border-b-slate-50"
-                  >
-                    {/* Checkbox */}
-                    <button
-                      onClick={() => toggle(t.id)}
-                      style={{
-                        border: `2px solid ${t.done ? f.color : "#cbd5e1"}`,
-                        background: t.done ? f.color : "#fff",
-                        color: "#fff",
-                        borderRadius: 8,
-                        minWidth: 24, minHeight: 24,
-                        boxShadow: t.done ? `0 2px 8px ${f.color}40` : "none",
-                        transition: "all .2s",
-                      }}
-                      className="w-6 h-6 shrink-0 flex items-center justify-center text-xs font-bold"
-                    >
+                  <div key={t.id} style={{ display: "flex", alignItems: "center", gap: 12,
+                    padding: "11px 16px", borderTop: `1px solid ${C.border}`,
+                    borderLeft: `3px solid ${t.done ? C.border2 : f.color}` }}>
+                    <button onClick={() => toggle(t.id)}
+                      style={{ width: 17, height: 17, flexShrink: 0, borderRadius: 5, cursor: "pointer",
+                        border: `1px solid ${t.done ? f.color : "#3a4252"}`,
+                        background: t.done ? f.color : "transparent",
+                        display: "flex", alignItems: "center", justifyContent: "center",
+                        fontSize: 11, color: "#06281e", fontFamily: FONT,
+                        transition: "all .15s" }}>
                       {t.done ? "✓" : ""}
                     </button>
-
-                    {/* Texto */}
-                    <span style={{
-                      color: t.done ? "#94a3b8" : "#1e293b",
-                      textDecoration: t.done ? "line-through" : "none",
-                      fontSize: 15, flex: 1,
-                    }}>
+                    <span style={{ flex: 1, fontSize: 13, color: t.done ? C.txt3 : C.txt,
+                      textDecoration: t.done ? "line-through" : "none" }}>
                       {t.text}
                     </span>
-
-                    {/* Badge frente */}
-                    <span style={{
-                      color: t.done ? "#94a3b8" : f.color,
-                      background: t.done ? "#f8fafc" : f.bg,
-                      fontSize: 11, fontWeight: 600,
-                      borderRadius: 20, padding: "3px 10px",
-                      whiteSpace: "nowrap",
-                    }}
-                      className="hidden sm:inline-block">
+                    <span style={{ fontSize: 10, letterSpacing: "0.03em", flexShrink: 0, color: f.color }}>
                       {f.label}
                     </span>
-
-                    {/* Borrar */}
                     <button onClick={() => remove(t.id)}
-                      style={{ color: "#cbd5e1", fontSize: 14, lineHeight: 1 }}
-                      className="shrink-0 hover:text-red-400 transition-colors px-1"
-                      aria-label="Borrar">
+                      style={{ background: "none", border: "none", color: "#39414f", cursor: "pointer",
+                        fontSize: 13, flexShrink: 0, fontFamily: FONT, lineHeight: 1 }}
+                      onMouseEnter={(e) => e.target.style.color = "#e06a6a"}
+                      onMouseLeave={(e) => e.target.style.color = "#39414f"}>
                       ✕
                     </button>
-                  </li>
+                  </div>
                 );
               })}
-            </ul>
+              {pct === 100 && total > 0 && (
+                <div style={{ padding: "14px 16px", borderTop: `1px solid ${C.border}`,
+                  textAlign: "center", color: C.accent, fontSize: 13 }}>
+                  ✓ Día cerrado. Bien ahí.
+                </div>
+              )}
+            </>
           )}
-        </div>
 
-        {/* ── AGREGAR ── */}
-        <div style={{ background: "#fff", border: "1px solid #e2e8f0", borderRadius: 20, boxShadow: "0 1px 4px rgba(15,23,42,.06)" }}
-          className="px-6 py-5">
-          <p style={{ color: "#0f172a", fontWeight: 700, fontSize: 15, marginBottom: 14 }}>Agregar objetivo</p>
-          <div className="flex gap-2 flex-wrap sm:flex-nowrap">
-            <input
-              type="text"
-              value={newText}
+          {/* Agregar */}
+          <div style={{ display: "flex", gap: 8, padding: "14px 16px", borderTop: `1px solid ${C.border}` }}>
+            <input type="text" value={newText}
               onChange={(e) => setNewText(e.target.value)}
               onKeyDown={(e) => e.key === "Enter" && addTask()}
-              placeholder="Descripción del objetivo…"
-              style={{ background: "#f8fafc", border: "1.5px solid #e2e8f0", color: "#1e293b", borderRadius: 12, fontSize: 14 }}
-              className="flex-1 min-w-0 px-4 py-3 outline-none focus:border-blue-400 transition-colors placeholder:text-slate-400"
-            />
-            <select
-              value={newFrente}
-              onChange={(e) => setNewFrente(e.target.value)}
-              style={{ background: "#f8fafc", border: "1.5px solid #e2e8f0", color: "#1e293b", borderRadius: 12, fontSize: 14 }}
-              className="px-3 py-3 outline-none"
-            >
+              placeholder="Nuevo objetivo…"
+              style={{ flex: 1, background: C.panel2, border: `1px solid ${C.border2}`, color: C.txt,
+                borderRadius: 7, padding: "9px 11px", fontSize: 13, fontFamily: FONT, outline: "none" }}
+              onFocus={(e) => e.target.style.borderColor = "#3a4252"}
+              onBlur={(e) => e.target.style.borderColor = C.border2} />
+            <select value={newFrente} onChange={(e) => setNewFrente(e.target.value)}
+              style={{ background: C.panel2, border: `1px solid ${C.border2}`, color: C.txt,
+                borderRadius: 7, padding: "9px 11px", fontSize: 13, fontFamily: FONT, outline: "none", cursor: "pointer" }}>
               {FRENTE_KEYS.map((k) => (
                 <option key={k} value={k}>{FRENTES[k].label}</option>
               ))}
             </select>
-            <button
-              onClick={addTask}
-              style={{ background: "linear-gradient(135deg,#3b82f6,#6366f1)", color: "#fff", borderRadius: 12, fontSize: 14, fontWeight: 600, boxShadow: "0 4px 14px rgba(99,102,241,.4)" }}
-              className="px-6 py-3 hover:opacity-90 transition-opacity whitespace-nowrap"
-            >
-              + Agregar
+            <button onClick={addTask}
+              style={{ background: C.accent, color: "#06281e", border: "none", fontWeight: 700,
+                cursor: "pointer", padding: "9px 14px", borderRadius: 7, fontFamily: FONT, fontSize: 13 }}
+              onMouseEnter={(e) => e.target.style.filter = "brightness(1.08)"}
+              onMouseLeave={(e) => e.target.style.filter = "none"}>
+              +
             </button>
           </div>
         </div>
 
-        {/* ── FRENTES ── */}
-        <div style={{ background: "#fff", border: "1px solid #e2e8f0", borderRadius: 20, boxShadow: "0 1px 4px rgba(15,23,42,.06)" }}
-          className="px-6 py-5">
-          <p style={{ color: "#94a3b8", fontSize: 11, fontWeight: 600, letterSpacing: "0.1em", textTransform: "uppercase", marginBottom: 14 }}>
-            Frentes activos
-          </p>
-          <div className="flex flex-wrap gap-2">
-            {FRENTE_KEYS.map((k) => {
-              const f = FRENTES[k];
-              const count = tasks.filter((t) => t.frente === k).length;
-              const done  = tasks.filter((t) => t.frente === k && t.done).length;
-              return (
-                <div key={k}
-                  style={{ background: f.bg, border: `1px solid ${f.color}30`, borderRadius: 12 }}
-                  className="flex items-center gap-2 px-3 py-2">
-                  <span style={{ width: 8, height: 8, borderRadius: "50%", background: f.color, display: "inline-block", flexShrink: 0 }} />
-                  <span style={{ color: "#374151", fontSize: 13, fontWeight: 500 }}>{f.label}</span>
-                  {count > 0 && (
-                    <span style={{ color: f.color, fontSize: 11, fontWeight: 700 }}>{done}/{count}</span>
-                  )}
-                </div>
-              );
-            })}
+        {/* ── FRENTES ACTIVOS ── */}
+        <div style={panel}>
+          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "13px 16px" }}>
+            <span style={{ fontSize: 12, letterSpacing: "0.08em", color: C.txt, fontWeight: 600 }}>FRENTES ACTIVOS</span>
+          </div>
+          <div style={{ display: "flex", flexWrap: "wrap", gap: 7, padding: "0 16px 14px" }}>
+            {Object.keys(frentesActivos).length === 0 ? (
+              <span style={{ color: C.txt3, fontSize: 11 }}>Cargá objetivos para ver los frentes.</span>
+            ) : (
+              Object.entries(frentesActivos).map(([k, v]) => {
+                const f = FRENTES[k] || FRENTES.sc200;
+                return (
+                  <span key={k} style={{ display: "flex", alignItems: "center", gap: 7, borderRadius: 999,
+                    padding: "5px 11px", fontSize: 11, background: C.panel2, border: `1px solid ${C.border2}` }}>
+                    <span style={{ width: 7, height: 7, borderRadius: 999, background: f.color, display: "inline-block" }} />
+                    {f.label}
+                    <span style={{ color: C.txt3, fontSize: 10 }}>{v.done}/{v.total}</span>
+                  </span>
+                );
+              })
+            )}
           </div>
         </div>
 
-        {/* ── HORARIO (solo días de semana) ── */}
+        {/* ── HORARIO ── */}
         {[1,2,3,4,5].includes(date.getDay()) && (
-          <div style={{ background: "#fff", border: "1px solid #e2e8f0", borderRadius: 20, boxShadow: "0 1px 4px rgba(15,23,42,.06)" }}
-            className="overflow-hidden">
-            <div style={{ borderBottom: "1px solid #f1f5f9" }} className="px-6 py-4">
-              <span style={{ color: "#0f172a", fontWeight: 700, fontSize: 16 }}>Horario del día</span>
+          <div style={panel}>
+            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "13px 16px" }}>
+              <span style={{ fontSize: 12, letterSpacing: "0.08em", color: C.txt, fontWeight: 600 }}>HORARIO DEL DÍA</span>
             </div>
-            <div className="px-6 py-5">
-              <div style={{ borderLeft: "2px solid #e2e8f0", display: "grid", gridTemplateColumns: "100px 1fr", gap: 0 }}>
-                {HORARIO.map((item, i) => (
+
+            {/* Bloque actual */}
+            {esHoy && (
+              <div style={{ padding: "0 16px 13px", display: "flex", alignItems: "center", gap: 9, fontSize: 12 }}>
+                {curBlock ? (
                   <>
-                    <div key={`t${i}`} style={{
-                      fontSize: 12,
-                      fontWeight: item.type === "block" ? 600 : 400,
-                      color: item.type === "block" ? "#374151" : "#9ca3af",
-                      padding: "10px 12px",
-                      lineHeight: 1.4,
+                    <span style={{ fontSize: 9, letterSpacing: "0.14em", color: C.accent,
+                      border: `1px solid rgba(52,211,153,.3)`, borderRadius: 4, padding: "1px 6px" }}>
+                      AHORA
+                    </span>
+                    <span style={{ color: C.txt2 }}>
+                      {rango(curBlock)} · {curBlock.block ? curBlock.title : curBlock.label}
+                    </span>
+                  </>
+                ) : (
+                  <span style={{ color: C.txt3 }}>Fuera de horario de jornada</span>
+                )}
+              </div>
+            )}
+
+            {/* Timeline */}
+            <div style={{ padding: "2px 16px 16px", borderTop: `1px solid ${C.border}` }}>
+              {HORARIO.map((it, i) => {
+                const isCur = curBlock && curBlock.from === it.from;
+                return (
+                  <div key={i} style={{ display: "grid", gridTemplateColumns: "78px 1fr",
+                    gap: 10, alignItems: "start", padding: "7px 0" }}>
+                    <div style={{ fontSize: 11, color: C.txt3, paddingTop: 1 }}>{rango(it)}</div>
+                    <div style={{
+                      fontSize: 12, position: "relative", paddingLeft: 16,
+                      color: it.block ? C.txt : C.txt2,
+                      ...(isCur ? { background: "rgba(52,211,153,.05)", borderRadius: 6,
+                        marginLeft: -6, paddingLeft: 22, paddingRight: 8 } : {}),
                     }}>
-                      {item.time}
-                    </div>
-                    <div key={`c${i}`} style={{ padding: "6px 4px 6px 0" }}>
-                      {item.type === "block" ? (
-                        <div style={{
-                          background: item.bg,
-                          border: `0.5px solid ${item.border}`,
-                          borderRadius: 10,
-                          padding: "8px 12px",
-                        }}>
-                          <div style={{ fontSize: 13, fontWeight: 600, color: item.text }}>{item.label}</div>
-                          <div style={{ fontSize: 12, color: item.sub_color, marginTop: 2 }}>{item.sub}</div>
-                        </div>
+                      {/* dot */}
+                      <span style={{
+                        position: "absolute", left: isCur ? 6 : 0, top: 5,
+                        width: 6, height: 6, borderRadius: 999,
+                        background: isCur ? C.accent : "#39414f",
+                        display: "inline-block",
+                        ...(isCur ? { boxShadow: "0 0 0 3px rgba(52,211,153,.18)" } : {}),
+                      }} />
+                      {it.block ? (
+                        <>
+                          <b style={{ display: "block", fontSize: 12, fontWeight: 600, marginBottom: 1 }}>{it.title}</b>
+                          <small style={{ color: C.txt3, fontSize: 11 }}>{it.note}</small>
+                        </>
                       ) : (
-                        <div style={{ fontSize: 13, color: "#9ca3af", padding: "4px 0", lineHeight: 1.5 }}>
-                          {item.label}
-                        </div>
+                        it.label
                       )}
                     </div>
-                  </>
-                ))}
-              </div>
+                  </div>
+                );
+              })}
             </div>
           </div>
         )}
 
+        <div style={{ textAlign: "center", color: C.txt3, fontSize: 10, letterSpacing: "0.1em", marginTop: 18 }}>
+          localStorage · offline · sin cuenta
+        </div>
       </div>
     </div>
   );
