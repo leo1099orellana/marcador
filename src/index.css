@@ -3,21 +3,23 @@
 *, *::before, *::after { box-sizing: border-box; }
 
 html, body { height: 100%; margin: 0; background: #f1f5f9; }
-
 #root { height: 100%; }
 
-/* Desktop: no outer scroll — contenido en 2 columnas */
+.app-shell { display: flex; flex-direction: column; }
+
 @media (min-width: 768px) {
-  .app-shell   { height: 100dvh; overflow: hidden; }
-  .main-grid   { display: grid; grid-template-columns: 390px 1fr; overflow: hidden; }
+  .app-shell { height: 100dvh; overflow: hidden; }
+  .main-grid { display: grid; grid-template-columns: 370px 1fr; align-items: start; }
 }
 
-/* Mobile: columna única con scroll normal */
 @media (max-width: 767px) {
-  .main-grid   { display: flex; flex-direction: column; overflow-y: auto; }
+  .main-grid { display: flex; flex-direction: column; overflow-y: auto; }
 }
 
-.app-shell   { display: flex; flex-direction: column; }
-.main-grid   { flex: 1; gap: 0.875rem; padding: 0.875rem 1.25rem; min-height: 0; }
-.grid-col    { display: flex; flex-direction: column; gap: 0.75rem; min-height: 0; overflow: hidden; }
-.flex-fill   { flex: 1; min-height: 0; overflow-y: auto; }
+/* columna izquierda estira hasta el final de pantalla */
+.col-left  { display: flex; flex-direction: column; gap: 0.75rem; height: 100%; overflow: hidden; }
+/* columna derecha: altura natural, sin estirar */
+.col-right { display: flex; flex-direction: column; gap: 0.75rem; }
+
+.main-grid { flex: 1; gap: 0.875rem; padding: 0.875rem 1.25rem; min-height: 0; overflow: hidden; }
+.flex-fill { flex: 1; min-height: 0; overflow-y: auto; }

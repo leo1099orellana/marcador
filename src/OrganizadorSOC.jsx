@@ -113,7 +113,7 @@ export default function OrganizadorSOC() {
       <div className="main-grid">
 
         {/* ══ COLUMNA IZQUIERDA ══ */}
-        <div className="grid-col">
+        <div className="col-left">
 
           {/* Fecha */}
           <div style={{...card, padding:"12px 18px", flexShrink:0}}>
@@ -194,15 +194,15 @@ export default function OrganizadorSOC() {
         </div>
 
         {/* ══ COLUMNA DERECHA ══ */}
-        <div className="grid-col">
+        <div className="col-right">
 
-          {/* Lista de tareas */}
-          <div style={{...card,display:"flex",flexDirection:"column"}} className="flex-fill">
-            <div style={{padding:"11px 18px",borderBottom:"1px solid #f1f5f9",display:"flex",alignItems:"center",justifyContent:"space-between",flexShrink:0}}>
+          {/* Lista de tareas — altura natural */}
+          <div style={{...card}}>
+            <div style={{padding:"11px 18px",borderBottom:"1px solid #f1f5f9",display:"flex",alignItems:"center",justifyContent:"space-between"}}>
               <span style={{fontWeight:700,fontSize:14,color:"#0f172a"}}>Objetivos</span>
               <span style={{background:"#f1f5f9",color:"#64748b",fontSize:11,fontWeight:600,borderRadius:20,padding:"2px 10px"}}>{total} tareas</span>
             </div>
-            <div style={{flex:1,overflowY:"auto",minHeight:0}}>
+            <div style={{overflowY:"auto",maxHeight:"calc(100dvh - 300px)"}}>
               {loading ? (
                 <div style={{color:"#cbd5e1",padding:"32px",textAlign:"center",fontSize:13}}>Cargando…</div>
               ) : tasks.length===0 ? (
@@ -212,7 +212,7 @@ export default function OrganizadorSOC() {
                   {tasks.map(t=>{
                     const f=FRENTES[t.frente]||FRENTES.sc200;
                     return (
-                      <li key={t.id} style={{borderLeft:`4px solid ${t.done?"#e2e8f0":f.color}`,borderBottom:"1px solid #f8fafc",display:"flex",alignItems:"center",gap:12,padding:"11px 18px",transition:"background .15s",cursor:"default"}}
+                      <li key={t.id} style={{borderLeft:`4px solid ${t.done?"#e2e8f0":f.color}`,borderBottom:"1px solid #f8fafc",display:"flex",alignItems:"center",gap:12,padding:"14px 18px",transition:"background .15s",cursor:"default"}}
                         onMouseEnter={e=>e.currentTarget.style.background="#fafafa"}
                         onMouseLeave={e=>e.currentTarget.style.background="transparent"}>
                         <button onClick={()=>toggle(t.id)}
