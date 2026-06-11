@@ -2,7 +2,7 @@ import { useState, useEffect, useCallback } from "react";
 import "./index.css";
 
 const FRENTES = {
-  sc200:     { label: "SC-200",    color: "#3b82f6" },
+  sc200:     { label: "Security+",  color: "#3b82f6" },
   wazuh:     { label: "Wazuh",     color: "#8b5cf6" },
   azure:     { label: "Azure",     color: "#06b6d4" },
   cisco:     { label: "Cisco",     color: "#34d399" },
@@ -12,8 +12,8 @@ const FRENTES = {
 };
 
 const WEEKDAY = [
-  { frente: "sc200",  text: "SC-200: estudio + lab (2h)" },
-  { frente: "wazuh",  text: "Wazuh: avanzar repo soc-homelab (1.5h)" },
+  { frente: "sc200",  text: "Security+: teoría de la certificación (2h)" },
+  { frente: "wazuh",  text: "Wazuh / Wireshark / Linux (1.5h)" },
   { frente: "cisco",  text: "Cisco: módulo del día (1.5h)" },
   { frente: "ingles", text: "Inglés: práctica diaria (45m)" },
 ];
@@ -26,7 +26,7 @@ const PLAN = {
 
 const HORARIO = [
   { from:510,  to:540,  label:"Despertar, desayuno" },
-  { from:540,  to:660,  block:true, title:"Bloque 1 · SC-200 (2h)",           note:"Cabeza fresca, lo más exigente del día" },
+  { from:540,  to:660,  block:true, title:"Bloque 1 · Security+ (2h)",         note:"Cabeza fresca, lo más exigente del día" },
   { from:960,  to:1050, block:true, title:"Bloque 2 · frente del día (1.5h)", note:"Cisco / Wazuh / búsqueda, según el día" },
   { from:1050, to:1290, label:"Cena / descanso / vida" },
   { from:1290, to:1335, block:true, title:"Bloque 3 · inglés técnico (45 min)",note:"Lo más liviano: hablar, escuchar, repasar" },
