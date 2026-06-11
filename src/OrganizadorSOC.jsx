@@ -88,7 +88,7 @@ export default function App() {
             <span className="logo-mark">✦</span>
             <span><b className="logo-name">SOC_TRACKER</b><span className="logo-sub">// DAILY OPS</span></span>
           </div>
-          <button className="btn-reset" onClick={() => { if (tasks.length && !confirm("¿Borrar objetivos de este día?")) return; const p=loadDay(date); setTasks(p); lsSet(key,JSON.stringify(p)); }}>↻ RESETEAR DÍA</button>
+          <button className="btn-reset" onClick={() => { if (tasks.length && !confirm("¿Borrar objetivos de este día?")) return; try{localStorage.removeItem(key);}catch{/**/} const p=loadDay(date); setTasks(p); }}>↻ RESETEAR DÍA</button>
         </div>
 
         {/* fecha */}
